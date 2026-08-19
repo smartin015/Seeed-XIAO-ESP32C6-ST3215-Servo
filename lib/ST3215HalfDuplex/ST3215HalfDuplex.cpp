@@ -26,6 +26,29 @@ void SMS_STS_HalfDuplex::begin(int8_t pin, HardwareSerial &serial) {
   setRx();
 }
 
+int SMS_STS_HalfDuplex::changeId(uint8_t currentId, uint8_t newId) {
+  // 0xFE is the broadcast ID and cannot be used as a normal servo ID.
+  if (newId > 0xFD) {
+    return 0;
+  }
+  if (currentId == newId) {
+    return 1;
+  }
+
+  // EEPROM writes are protected: unlock, write the new ID, then lock again
+  // using the new ID (the servo answers with its new ID after the write).
+  if (!unLockEprom(currentId)) {
+    return 0;
+  }
+
+  // The acknowledgement for this write can already carry the new ID on some
+  // firmware revisions, so its return value is not meaningful. Waveshare's
+  // reference code ignores it for the same reason.
+  writeByte(currentId, SMS_STS_ID, newId);
+
+  return LockEprom(newId) == 1;
+}
+
 void SMS_STS_HalfDuplex::setTx() {
   if (_txMode) {
     return;

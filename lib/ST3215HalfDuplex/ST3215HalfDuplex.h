@@ -20,6 +20,11 @@ public:
   // serial: hardware UART to use (default Serial1).
   void begin(int8_t pin, HardwareSerial &serial = Serial1);
 
+  // Permanently reassign a servo's bus ID (stored in the servo EEPROM).
+  // Only one servo may be connected to the DATA line while changing its ID.
+  // Returns 1 on success, 0 on failure.
+  int changeId(uint8_t currentId, uint8_t newId);
+
 protected:
   int writeSCS(unsigned char *nDat, int nLen) override;
   int writeSCS(unsigned char bDat) override;
