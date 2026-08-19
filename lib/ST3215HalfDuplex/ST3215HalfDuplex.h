@@ -22,7 +22,13 @@ public:
 
   // Permanently reassign a servo's bus ID (stored in the servo EEPROM).
   // Only one servo may be connected to the DATA line while changing its ID.
-  // Returns 1 on success, 0 on failure.
+  //
+  // Return values:
+  //   1  success
+  //  -1  invalid new ID (0xFE is the broadcast address, 0xFF reserved)
+  //  -2  unlock failed (no ack and the new ID is not reachable)
+  //  -3  new ID not reachable after writing (ID did not change)
+  //  -4  ID changed, but the EEPROM write protection could not be re-locked
   int changeId(uint8_t currentId, uint8_t newId);
 
 protected:

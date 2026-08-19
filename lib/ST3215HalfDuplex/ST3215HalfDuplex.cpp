@@ -29,24 +29,43 @@ void SMS_STS_HalfDuplex::begin(int8_t pin, HardwareSerial &serial) {
 int SMS_STS_HalfDuplex::changeId(uint8_t currentId, uint8_t newId) {
   // 0xFE is the broadcast ID and cannot be used as a normal servo ID.
   if (newId > 0xFD) {
-    return 0;
+    return -1;
   }
   if (currentId == newId) {
     return 1;
   }
 
-  // EEPROM writes are protected: unlock, write the new ID, then lock again
-  // using the new ID (the servo answers with its new ID after the write).
-  if (!unLockEprom(currentId)) {
-    return 0;
+  // EEPROM writes are protected: unlock the protection first. The write is
+  // the important part; a missing ack on the single-pin link does not tell
+  // us whether the command arrived, so verify with Ping(newId) below.
+  int unlockAck = unLockEprom(currentId);
+  delay(5);
+
+  // Write the new ID with a broadcast frame, exactly as the Waveshare
+  // protocol manual's "set ID" example does. A broadcast write returns no
+  // acknowledgement, which avoids the ambiguity of an ack that may carry
+  // the old or the new ID.
+  writeByte(0xFE, SMS_STS_ID, newId);
+
+  // Verify the new ID is live. The EEPROM save can keep the servo busy for
+  // a few milliseconds, so give it a couple of short retries.
+  int pingOk = -1;
+  for (uint8_t attempt = 0; attempt < 5 && pingOk < 0; attempt++) {
+    delay(20);
+    pingOk = Ping(newId);
   }
 
-  // The acknowledgement for this write can already carry the new ID on some
-  // firmware revisions, so its return value is not meaningful. Waveshare's
-  // reference code ignores it for the same reason.
-  writeByte(currentId, SMS_STS_ID, newId);
+  if (pingOk < 0) {
+    // If the unlock ack was also missing the RX path probably never saw a
+    // response; otherwise the unlock succeeded but the ID write failed.
+    return unlockAck ? -3 : -2;
+  }
 
-  return LockEprom(newId) == 1;
+  // Re-lock the EEPROM using the new ID.
+  if (!LockEprom(newId)) {
+    return -4;
+  }
+  return 1;
 }
 
 void SMS_STS_HalfDuplex::setTx() {

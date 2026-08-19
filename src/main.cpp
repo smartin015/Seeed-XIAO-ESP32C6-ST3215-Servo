@@ -97,13 +97,25 @@ static void changeIdInteractive() {
   Serial.println((int)newId);
 
   int ok = st.changeId((uint8_t)oldId, (uint8_t)newId);
-  if (ok) {
-    Serial.println(F("OK - ID stored in servo EEPROM"));
-    Serial.print(F("Ping new ID ... "));
-    int id = st.Ping((uint8_t)newId);
-    Serial.println(id >= 0 ? F("OK") : F("no response"));
-  } else {
-    Serial.println(F("FAILED - check wiring and servo power"));
+  switch (ok) {
+    case 1:
+      Serial.println(F("OK - ID stored in servo EEPROM"));
+      break;
+    case -1:
+      Serial.println(F("FAILED - invalid new ID (0-253 only)"));
+      break;
+    case -2:
+      Serial.println(F("FAILED - could not unlock EEPROM (ack timeout)"));
+      break;
+    case -3:
+      Serial.println(F("FAILED - ID write did not take effect (new ID not found)"));
+      break;
+    case -4:
+      Serial.println(F("FAILED - EEPROM re-lock failed"));
+      break;
+    default:
+      Serial.println(F("FAILED - check wiring and servo power"));
+      break;
   }
 }
 
